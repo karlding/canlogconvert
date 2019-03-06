@@ -19,14 +19,24 @@ import pprint
 #  pp.ParserElement.setDefaultWhitespaceChars(" \t")
 
 ControlComment = pp.Combine(pp.Literal(";") + pp.Literal("$"))
-FileVersion = pp.Group(
+# According to PEAK's "PEAK CAN TRC File Format" PDF document, these are the
+# only valid version numbers supported
+ValidVersions = pp.Or(
+    pp.Literal("1.0")
+    ^ pp.Literal("1.1")
+    ^ pp.Literal("1.2")
+    ^ pp.Literal("1.3")
+    ^ pp.Literal("2.0")
+    ^ pp.Literal("2.1")
+)
+FileVersion = (
     ControlComment
     + pp.Literal("FILEVERSION")
     + pp.Literal("=")
-    + pp.Combine(pp.Word(pp.nums) + pp.Literal(".") + pp.Word(pp.nums))
+    + pp.Combine(ValidVersions).setResultsName("FileVersion")
     + pp.LineEnd()
 )
-StartTime = pp.Group(
+StartTime = (
     ControlComment
     + pp.Literal("STARTTIME")
     + pp.Literal("=")
@@ -34,41 +44,43 @@ StartTime = pp.Group(
         pp.ZeroOrMore(pp.Word(pp.nums))
         + pp.Literal(".")
         + pp.ZeroOrMore(pp.Word(pp.nums))
-    )
+    ).setResultsName("StartTime")
     + pp.LineEnd()
 )
-Columns = pp.Group(
+Columns = (
     ControlComment
     + pp.Literal("COLUMNS")
     + pp.Literal("=")
     + pp.Group(
-        # Message Number
-        pp.Optional(pp.Literal("N") + pp.Literal(","))
-        # Time Offset (ms)
-        + pp.Literal("O")
-        + pp.Literal(",")
-        # Type
-        + pp.Literal("T")
-        + pp.Literal(",")
-        # Bus (1-16)
-        # If Bus column is included, for events the Bus number can be specified as
-        # '-' if the event is not associated with a specific bus
-        + pp.Optional(pp.Literal("B") + pp.Literal(","))
-        # CAN-ID (Hex)
-        # 4 digits for 11-bit CAN-IDs (0000-07FF).
-        # 8 digits for 29-bit CAN-IDs (00000000-1FFFFFFF).
-        # Contains ‘-‘ for the message types EC, ER, ST, see ‘T’ column.
-        + pp.Literal("I")
-        + pp.Literal(",")
-        # Direction.
-        # Indicates whether the message was received ('Rx') or transmitted ('Tx').
-        + pp.Literal("d")
-        + pp.Literal(",")
-        + pp.Optional(pp.Literal("R") + pp.Literal(","))
-        + pp.oneOf("l L")
-        + pp.Literal(",")
-        + pp.Literal("D")
-    )
+        pp.Combine(
+            # Message Number
+            pp.Optional(pp.Literal("N") + pp.Literal(","))
+            # Time Offset (ms)
+            + pp.Literal("O")
+            + pp.Literal(",")
+            # Type
+            + pp.Literal("T")
+            + pp.Literal(",")
+            # Bus (1-16)
+            # If Bus column is included, for events the Bus number can be specified as
+            # '-' if the event is not associated with a specific bus
+            + pp.Optional(pp.Literal("B") + pp.Literal(","))
+            # CAN-ID (Hex)
+            # 4 digits for 11-bit CAN-IDs (0000-07FF).
+            # 8 digits for 29-bit CAN-IDs (00000000-1FFFFFFF).
+            # Contains '-' for the message types EC, ER, ST, see 'T' column.
+            + pp.Literal("I")
+            + pp.Literal(",")
+            # Direction.
+            # Indicates whether the message was received ('Rx') or transmitted ('Tx').
+            + pp.Literal("d")
+            + pp.Literal(",")
+            + pp.Optional(pp.Literal("R") + pp.Literal(","))
+            + pp.oneOf("l L")
+            + pp.Literal(",")
+            + pp.Literal("D")
+        )
+    ).setResultsName("Columns", listAllMatches=True)
     + pp.LineEnd()
 )
 
@@ -85,7 +97,7 @@ Header = FileVersion + StartTime + Columns
 Comment = StartTime  # ^ FileVersion ^ Columns)
 
 # [N],O,T,[B],I,d,[R],l/L,D
-BusNumber = pp.Or(
+ColumnBusNumber = pp.Or(
     pp.Literal("1")
     ^ pp.Literal("2")
     ^ pp.Literal("3")
@@ -104,13 +116,15 @@ BusNumber = pp.Or(
     ^ pp.Literal("16")
     ^ pp.Literal("-")
 )
+
 ColumnDirection = pp.Or(pp.Literal("Rx") ^ pp.Literal("Tx"))
+
 ColumnData = pp.Optional(pp.Word(pp.hexnums)) + pp.ZeroOrMore(
     pp.Literal(" ") + pp.Word(pp.hexnums)
 )
 #  ColumnCanId = pp.Literal()
 
-MessageType = pp.Or(
+ColumnMessageType = pp.Or(
     pp.Literal("DT")
     ^ pp.Literal("FD")
     ^ pp.Literal("FB")
@@ -122,11 +136,11 @@ MessageType = pp.Or(
     ^ pp.Literal("ER")
 )
 
-MessageNumber = pp.Word(pp.nums)
+ColumnMessageNumber = pp.Word(pp.nums)
 
-TimeOffset = pp.Combine(pp.Word(pp.nums) + pp.Literal(".") + pp.Word(pp.nums))
+ColumnTimeOffset = pp.Combine(pp.Word(pp.nums) + pp.Literal(".") + pp.Word(pp.nums))
 
-CanID = pp.Combine(pp.OneOrMore(pp.Word(pp.hexnums)))
+ColumnCanID = pp.Combine(pp.OneOrMore(pp.Word(pp.hexnums)))
 
 ColumnReserved = pp.Literal("-")
 ColumnDLC = pp.Word(pp.nums)
@@ -136,17 +150,17 @@ ColumnData = pp.Combine(
 )
 
 LineData = pp.Group(
-    MessageNumber
-    + TimeOffset
-    + MessageType
-    + BusNumber
-    + CanID
-    + ColumnDirection
-    + ColumnReserved
-    + ColumnDLC
-    + ColumnData
-    #  + pp.LineEnd()
-)
+    ColumnMessageNumber.setResultsName("MessageNumber")
+    + ColumnTimeOffset.setResultsName("TimeOffset")
+    + ColumnMessageType.setResultsName("MessageType")
+    + ColumnBusNumber.setResultsName("BusNumber")
+    + ColumnCanID.setResultsName("CanID")
+    + ColumnDirection.setResultsName("Direction")
+    + ColumnReserved.setResultsName("Reserved")
+    + ColumnDLC.setResultsName("DLC")
+    + ColumnData.setResultsName("Data")
+    + pp.LineEnd()
+).setResultsName("LineData", listAllMatches=True)
 TrcFileFormat = Header + pp.ZeroOrMore(pp.Or(LineComment ^ LineData))
 
 # T: Type of message
@@ -174,33 +188,33 @@ class TraceMessageType:
 
 
 # B: Bus (1-16), optional. If Bus column is included, for events the Bus
-# number can be specified as ‘-‘ if the event is not associated with a specific
+# number can be specified as '-' if the event is not associated with a specific
 # bus.
 
 # I: CAN-ID (Hex)
 # 4 digits for 11-bit CAN-IDs (0000-07FF).
 # 8 digits for 29-bit CAN-IDs (00000000-1FFFFFFF).
-# Contains ‘-‘ for the message types EC, ER, ST, see ‘T’ column
+# Contains '-' for the message types EC, ER, ST, see 'T' column
 
-# d: Direction. Indicates whether the message was received (‘Rx’) or transmitted (‘Tx’).
+# d: Direction. Indicates whether the message was received ('Rx') or transmitted ('Tx').
 class Direction:
     DIRECTION_TX = "Tx"
     DIRECTION_RX = "Rx"
 
 
-# R: Reserved. Only used for J1939 protocol. Contains ‘-‘ for CAN busses. For
+# R: Reserved. Only used for J1939 protocol. Contains '-' for CAN busses. For
 # J1939 protocol, contains destination address of a Transport Protocol PDU2
 # Large Message. Optional for files that contain only CAN or CAN FD frames.
 
 # l: Data Length (0-1785). This is the actual number of data bytes, not the
 # Data Length Code (0..15). Optional. If omitted, the Data Length Code column
-# (‘L’) must be included.
+# ('L') must be included.
 
 # L: Data Length Code (CAN: 0..8; CAN FD: 0..15; J1939: 0..1785).
-# Optional. If omitted, the Data Length column (‘l’) must be included
+# Optional. If omitted, the Data Length column ('l') must be included
 
 # D: Data. 0-1785 data bytes in hexadecimal notation.
-# For Data Frames (message types DT, FD, FB, FE, BI, see ‘T’ column): Data
+# For Data Frames (message types DT, FD, FB, FE, BI, see 'T' column): Data
 # bytes of message, if Data Length is > 0.
 # Empty for Remote Request frames (message type RR).
 # For Hardware Status changes (message type ST): 4-byte status code in Motorola
@@ -273,26 +287,25 @@ def _parse_starttime(lines):
     return
 
 
-def _parse_columns(lines):
-    # ;$COLUMNS=N,O,T,B,I,d,R,L,D
-    return
+def _load_version(tokens):
+    return tokens.get("FileVersion")
+
+
+def _load_start_time(tokens):
+    return tokens.get("StartTime")
+
+
+def _load_columns(tokens):
+    return tokens.get("Columns")
+
+
+def _load_rows(tokens):
+    return tokens.get("LineData")
 
 
 def load_string(string):
-    lines = string.split("\n")
-    if not _resolve_trc_version(lines) == "2.1":
-        raise Error("We only support 2.1")
-    pp = pprint.PrettyPrinter(indent=4)
-    for val in TrcFileFormat.parseString(string):
-        print(val)
+    tokens = TrcFileFormat.parseString(string)
+    if not _load_version(tokens) == "2.1":
+        raise ValueError("We only support 2.1", _load_version(tokens))
 
-
-"""
-FILEVERSION_HEADER = COMMA + DOLLAR_SIGN + 'FILEVERSION' + EQUAL + FILEVERSION
-FILEVERSION = NUMBER + '.' + NUMBER
-
-
-
-COMMENT = COMMA + Not()
-"""
-#  r'\s+(\d+)\s+(\d+\.\d+)\s+(DT)\s+(\d+)\s+([\dA-F]+)\s+(Rx|Tx)\s+(.)+\s+(\d+)\s+(\d{2}+)'
+    _load_rows(tokens)
