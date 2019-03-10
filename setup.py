@@ -20,7 +20,9 @@ setup(
     keywords=["can"],
     url="https://github.com/karlding/canlogconvert",
     packages=find_packages(exclude=["tests"]),
-    install_requires=["pyparsing>=2.3.1"],
+    install_requires=["pyparsing>=2.3.1", "Jinja2>=2.10.1"],
+    # pip install -e .[docs]
+    extras_require={"docs": ["m2r>=0.2.0", "Sphinx>=2.0.0", "sphinx-rtd-theme>=0.4.0"]},
     test_suite="tests",
     entry_points={"console_scripts": ["canlogconvert=canlogconvert.__init__:_main"]},
 )

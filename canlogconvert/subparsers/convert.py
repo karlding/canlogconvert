@@ -23,12 +23,12 @@ def _do_convert(args):
 
     with open(args.infile, "r") as fin:
         try:
-            input_readers[file_extension].load_string(fin.read())
+            internal_trace = input_readers[file_extension].load_string(fin.read())
         except KeyError:
             raise Error("Unsupported input file extension '{}'".format(file_extension))
 
-    # Then write the Internal Representation to the output format
-    print(args.outfile)
+        # Then write the Internal Representation to the output format
+        print(internal_trace.as_trc_string())
     return
 
 

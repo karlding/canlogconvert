@@ -1,20 +1,10 @@
+"""Operations on a TRC file
+"""
 import pyparsing as pp
 import pprint
 
-# Load a CAN TRC file
-
-
-# Currently only aims to support Version 2.1
-
-# Column Order:
-#   [N],O,T,[B],I,d,[R],l/L,D
-
-# N: Message number, index of recorded message. Optional.
-# This is the array index
-
-# O: Time offset since start of the trace. Resolution: 1 microsecond.
-# Milliseconds before the decimal separator, microseconds (3 digits) behind
-# the decimal separator.
+from canlogconvert.traces.formats.internal_trace import InternalTrace
+from canlogconvert.traces.formats.internal_trace import InternalMessage
 
 #  pp.ParserElement.setDefaultWhitespaceChars(" \t")
 
@@ -140,7 +130,7 @@ ColumnMessageNumber = pp.Word(pp.nums)
 
 ColumnTimeOffset = pp.Combine(pp.Word(pp.nums) + pp.Literal(".") + pp.Word(pp.nums))
 
-ColumnCanID = pp.Combine(pp.OneOrMore(pp.Word(pp.hexnums)))
+ColumnArbitrationID = pp.Combine(pp.OneOrMore(pp.Word(pp.hexnums)))
 
 ColumnReserved = pp.Literal("-")
 ColumnDLC = pp.Word(pp.nums)
@@ -154,7 +144,7 @@ LineData = pp.Group(
     + ColumnTimeOffset.setResultsName("TimeOffset")
     + ColumnMessageType.setResultsName("MessageType")
     + ColumnBusNumber.setResultsName("BusNumber")
-    + ColumnCanID.setResultsName("CanID")
+    + ColumnArbitrationID.setResultsName("ArbitrationID")
     + ColumnDirection.setResultsName("Direction")
     + ColumnReserved.setResultsName("Reserved")
     + ColumnDLC.setResultsName("DLC")
@@ -300,12 +290,31 @@ def _load_columns(tokens):
 
 
 def _load_rows(tokens):
-    return tokens.get("LineData")
+    result = []
+    for message in tokens.get("LineData"):
+        msg = InternalMessage(
+            arbitration_id=message.get("ColumnArbitrationID"),
+            data=message.get("ColumnData"),
+            dlc=message.get("ColumnDLC"),
+            timestamp=message.get("ColumnTimeOffset"),
+        )
+        result.append(msg)
+    return result
 
 
 def load_string(string):
+    """Parse the given string
+
+    Args:
+        string (str): a string containing the TRC file's contents
+
+    Returns:
+        InternalTrace
+    """
     tokens = TrcFileFormat.parseString(string)
     if not _load_version(tokens) == "2.1":
         raise ValueError("We only support 2.1", _load_version(tokens))
 
-    _load_rows(tokens)
+    messages = _load_rows(tokens)
+
+    return InternalTrace(messages)
