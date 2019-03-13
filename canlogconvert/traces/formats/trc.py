@@ -5,6 +5,7 @@ import pprint
 
 from canlogconvert.traces.formats.internal_trace import InternalTrace
 from canlogconvert.traces.formats.internal_trace import InternalMessage
+from canlogconvert.traces.formats.internal_trace import InternalMessageDirection
 
 #  pp.ParserElement.setDefaultWhitespaceChars(" \t")
 
@@ -140,15 +141,15 @@ ColumnData = pp.Combine(
 )
 
 LineData = pp.Group(
-    ColumnMessageNumber.setResultsName("MessageNumber")
-    + ColumnTimeOffset.setResultsName("TimeOffset")
-    + ColumnMessageType.setResultsName("MessageType")
-    + ColumnBusNumber.setResultsName("BusNumber")
-    + ColumnArbitrationID.setResultsName("ArbitrationID")
-    + ColumnDirection.setResultsName("Direction")
-    + ColumnReserved.setResultsName("Reserved")
-    + ColumnDLC.setResultsName("DLC")
-    + ColumnData.setResultsName("Data")
+    ColumnMessageNumber.setResultsName("ColumnMessageNumber")
+    + ColumnTimeOffset.setResultsName("ColumnTimeOffset")
+    + ColumnMessageType.setResultsName("ColumnMessageType")
+    + ColumnBusNumber.setResultsName("ColumnBusNumber")
+    + ColumnArbitrationID.setResultsName("ColumnArbitrationID")
+    + ColumnDirection.setResultsName("ColumnDirection")
+    + ColumnReserved.setResultsName("ColumnReserved")
+    + ColumnDLC.setResultsName("ColumnDLC")
+    + ColumnData.setResultsName("ColumnData")
     + pp.LineEnd()
 ).setResultsName("LineData", listAllMatches=True)
 TrcFileFormat = Header + pp.ZeroOrMore(pp.Or(LineComment ^ LineData))
@@ -289,13 +290,38 @@ def _load_columns(tokens):
     return tokens.get("Columns")
 
 
+def _load_message_arbitration_id(message):
+    return int(message.get("ColumnArbitrationID"), 16)
+
+
+def _load_message_dlc(message):
+    return int(message.get("ColumnDLC"))
+
+
+def _load_message_data(message):
+    return bytearray.fromhex(message.get("ColumnData"))
+
+
+def _load_message_direction(message):
+    direction = message.get("ColumnDirection")
+    direction_lookup = {
+        "Rx": InternalMessageDirection.RX,
+        "Tx": InternalMessageDirection.TX,
+    }
+
+    if direction in direction_lookup:
+        return direction_lookup[direction]
+    raise ValueError("Unsupported Direction")
+
+
 def _load_rows(tokens):
     result = []
     for message in tokens.get("LineData"):
         msg = InternalMessage(
-            arbitration_id=message.get("ColumnArbitrationID"),
-            data=message.get("ColumnData"),
-            dlc=message.get("ColumnDLC"),
+            arbitration_id=_load_message_arbitration_id(message),
+            data=_load_message_data(message),
+            dlc=_load_message_dlc(message),
+            direction=_load_message_direction(message),
             timestamp=message.get("ColumnTimeOffset"),
         )
         result.append(msg)

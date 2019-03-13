@@ -5,16 +5,51 @@ from jinja2 import Environment, PackageLoader, select_autoescape
 import datetime
 
 
+class InternalMessageDirection(object):
+    RX = 1
+    TX = 2
+
+
+class InternalMessageType(object):
+    """
+    Attributes:
+        DT: CAN or J1939 data frame
+        FD: CAN FD data frame
+        FB: CAN FD data frame with BRS bit set (Bit Rate Switch)
+        FE: CAN FD data frame with ESI bit set (Error State Indicator)
+        BI: CAN FD data frame with both BRS and ESI bits set
+        RR: Remote Request Frame
+        ST: Hardware Status change
+        EC: Error Counter change
+        ER: Error Frame
+        EV: Event. User-defined text, begins directly after bus specifier.
+    """
+
+    DT = 1
+    FD = 2
+    FB = 3
+    FE = 4
+    BI = 5
+    RR = 6
+    ST = 7
+    EC = 8
+    ER = 9
+    EV = 10
+
+
 class InternalMessage(object):
     """
     """
 
-    def __init__(self, arbitration_id, data, dlc, timestamp):
+    def __init__(self, arbitration_id, data, dlc, direction, timestamp):
         """Create a new TraceMessage"""
         self._arbitration_id = arbitration_id
         self._data = data
         self._dlc = dlc
+        self._direction = direction
         self._timestamp = timestamp
+        self._message_type = InternalMessageType.DT
+        self._bus_number = 1
 
     @property
     def arbitration_id(self):
@@ -37,6 +72,10 @@ class InternalMessage(object):
         self._data = data
 
     @property
+    def data_as_trc_string(self):
+        return " ".join(["{:02x}".format(x) for x in self._data])
+
+    @property
     def dlc(self):
         """int: the length of the CAN message"""
         return self._dlc
@@ -44,6 +83,23 @@ class InternalMessage(object):
     @dlc.setter
     def dlc(self, dlc):
         self._dlc = dlc
+
+    @property
+    def direction(self):
+        """InternalMessageDirection: the direction of the CAN message"""
+        return self._direction
+
+    @direction.setter
+    def direction(self, direction):
+        self._direction = direction
+
+    @property
+    def direction_as_trc_string(self):
+        direction_to_str_lookup = {
+            InternalMessageDirection.RX: "Rx",
+            InternalMessageDirection.TX: "Tx",
+        }
+        return direction_to_str_lookup[self._direction]
 
     @property
     def timestamp(self):
@@ -62,6 +118,34 @@ class InternalMessage(object):
     @bus.setter
     def bus(self, bus):
         self._bus = bus
+
+    @property
+    def message_type(self):
+        return self._message_type
+
+    @property
+    def message_type_as_trc_string(self):
+        message_type_to_str_lookup = {
+            InternalMessageType.DT: "DT",
+            InternalMessageType.FD: "FD",
+            InternalMessageType.FB: "FB",
+            InternalMessageType.FE: "FE",
+            InternalMessageType.BI: "BI",
+            InternalMessageType.RR: "RR",
+            InternalMessageType.ST: "ST",
+            InternalMessageType.EC: "EC",
+            InternalMessageType.ER: "ER",
+            InternalMessageType.EV: "EV",
+        }
+        return message_type_to_str_lookup[self._message_type]
+
+    @message_type.setter
+    def message_type(self, message_type):
+        self._message_type = message_type
+
+    @property
+    def bus_number(self):
+        return self._bus_number
 
 
 class InternalTrace(object):
@@ -105,7 +189,8 @@ class InternalTrace(object):
                     datetime.date.today() - datetime.date(1899, 12, 30)
                 ).days,
                 "fractional_elapsed_day_ms": 1,
-            }
+            },
+            messages=self._messages,
         )
 
     def as_log_string(self):

@@ -15,5 +15,6 @@
 ;   |          |       |  |    |      |  |  |    Data [hex] ...
 ;   |          |       |  |    |      |  |  |    |
 ;---+--- ------+------ +- +- --+----- +- +- +--- +- -- -- -- -- -- -- --
-       1        39.488 DT 1      0401 Rx -  6    0A 00 66 98 0B 00
-     266      7244.587 DT 1      0401 Rx -  6    06 00 35 9A EE 59
+{%- for message in messages %}
+{{ "%8s" | format(loop.index) }}{{ "%14s" | format(message.timestamp) }}{{ "%3s" | format(message.message_type_as_trc_string) }}{{ " %-2s" | format(message.bus_number) }}{{ "%9s" | format(message.arbitration_id) }}{{ "%3s" | format(message.direction_as_trc_string) }}{{ "%2s" | format("-") }}{{ "%3s" | format(message.dlc) }}{{ "    %s" | format(message.data_as_trc_string) -}}
+{% endfor %}
