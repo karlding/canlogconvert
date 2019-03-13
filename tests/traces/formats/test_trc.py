@@ -1,10 +1,11 @@
 import unittest
 
 from canlogconvert.traces.formats.trc import load_string
+from canlogconvert.traces.formats.internal_trace import InternalMessageDirection
 
 
 class TrcTest(unittest.TestCase):
-    def test_load_string_supported_version(self):
+    def test_load_string_supported_version_2_1(self):
         # We currently only support File Version 2.1
         input_string = """\
 ;$FILEVERSION=2.1
@@ -27,10 +28,17 @@ class TrcTest(unittest.TestCase):
        1        39.488 DT 1      0401 Rx -  6    0A 00 66 98 0B 00
         """
 
-        load_string(input_string)
-        self.assertEqual(True, True)
+        db = load_string(input_string)
+        self.assertIsNotNone(db.messages)
+        self.assertEqual(len(db.messages), 1)
+        self.assertEqual(db.messages[0].arbitration_id, 0x0401)
+        self.assertEqual(
+            db.messages[0].data, bytearray([0x0A, 0x00, 0x66, 0x98, 0x0B, 0x00])
+        )
+        self.assertEqual(db.messages[0].dlc, 6)
+        self.assertEqual(db.messages[0].direction, InternalMessageDirection.RX)
 
-    def test_load_string_unsupported_version(self):
+    def test_load_string_unsupported_version_1_1(self):
         # We currently only support File Version 2.1
         input_string = """\
 ;$FILEVERSION=1.1
