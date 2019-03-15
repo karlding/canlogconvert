@@ -343,4 +343,4 @@ def load_string(string):
 
     messages = _load_rows(tokens)
 
-    return InternalTrace(messages)
+    return InternalTrace(messages=messages, start_timestamp=0)

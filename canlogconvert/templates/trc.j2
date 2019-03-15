@@ -16,5 +16,5 @@
 ;   |          |       |  |    |      |  |  |    |
 ;---+--- ------+------ +- +- --+----- +- +- +--- +- -- -- -- -- -- -- --
 {%- for message in messages %}
-{{ "%8s" | format(loop.index) }}{{ "%14s" | format(message.timestamp) }}{{ "%3s" | format(message.message_type_as_trc_string) }}{{ " %-2s" | format(message.bus_number) }}{{ "%9s" | format('{:04x}'.format(message.arbitration_id)) }}{{ "%3s" | format(message.direction_as_trc_string) }}{{ "%2s" | format("-") }}{{ "%3s" | format(message.dlc) }}{{ "    %s" | format(message.data_as_trc_string) -}}
+{{ "%8s" | format(loop.index) }}{{ "%14s" | format(message.timestamp) }}{{ "%3s" | format(message.message_type_as_trc_string) }}{{ " %-2s" | format(message.bus_number) }}{{ "%9s" | format('{:04X}'.format(message.arbitration_id)) }}{{ "%3s" | format(message.direction_as_trc_string) }}{{ "%2s" | format("-") }}{{ "%3s" | format(message.dlc) }}{{ "    %s" | format(message.data_as_trc_string) -}}
 {% endfor %}

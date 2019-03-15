@@ -73,7 +73,7 @@ class InternalMessage(object):
 
     @property
     def data_as_trc_string(self):
-        return " ".join(["{:02x}".format(x) for x in self._data])
+        return " ".join(["{:02X}".format(x) for x in self._data])
 
     @property
     def dlc(self):
@@ -156,13 +156,23 @@ class InternalTrace(object):
         messages (list)
     """
 
-    def __init__(self, messages):
+    def __init__(self, start_timestamp, messages):
         """Create a new InternalTrace
 
         Args:
             messages (list): a list of messages
         """
+        self._start_timestamp = start_timestamp
         self._messages = messages
+        self._buses = [1]
+
+    @property
+    def start_timestamp(self):
+        return self._start_timestamp
+
+    @start_timestamp.setter
+    def start_timestamp(self, start_timestamp):
+        self._start_timestamp = start_timestamp
 
     @property
     def messages(self):
@@ -186,7 +196,7 @@ class InternalTrace(object):
             trc={
                 "file_version": "2.1",
                 "days_since_epoch": (
-                    datetime.date.today() - datetime.date(1899, 12, 30)
+                    datetime.date(2019, 5, 4) - datetime.date(1899, 12, 30)
                 ).days,
                 "fractional_elapsed_day_ms": 1,
             },
