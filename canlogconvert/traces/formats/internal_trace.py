@@ -199,6 +199,7 @@ class InternalTrace(object):
                     datetime.date(2019, 5, 4) - datetime.date(1899, 12, 30)
                 ).days,
                 "fractional_elapsed_day_ms": 1,
+                "start_timestamp": self._start_timestamp,
             },
             messages=self._messages,
         )

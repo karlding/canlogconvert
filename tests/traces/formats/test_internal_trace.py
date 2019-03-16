@@ -27,7 +27,9 @@ class TestInternalTrace(unittest.TestCase):
                 timestamp=0,
             )
         )
-        internal_trace = InternalTrace(messages=messages, start_timestamp=0)
+        internal_trace = InternalTrace(
+            messages=messages, start_timestamp="2019-01-09 18:34:16.883.5"
+        )
 
         expected = """\
 ;$FILEVERSION=2.1

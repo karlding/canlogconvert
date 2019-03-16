@@ -75,12 +75,42 @@ Columns = (
     + pp.LineEnd()
 )
 
-LineComment = (
-    pp.Literal(";")
-    + pp.NotAny(pp.Or(FileVersion ^ StartTime ^ Columns))
-    + pp.Regex(r".*")
+StartTimeComment = pp.Literal(";") + pp.Literal("Start time: ")
+
+StartTimeLineComment = (
+    StartTimeComment
+    + pp.Combine(
+        pp.Combine(
+            pp.Word(pp.nums)
+            + pp.Literal("-")
+            + pp.Word(pp.nums)
+            + pp.Literal("-")
+            + pp.Word(pp.nums)
+        )
+        + pp.Combine(
+            pp.Word(pp.nums)
+            + pp.Literal(":")
+            + pp.Word(pp.nums)
+            + pp.Literal(":")
+            + pp.Word(pp.nums)
+            + pp.Literal(".")
+            + pp.Word(pp.nums)
+            + pp.Literal(".")
+            + pp.Word(pp.nums)
+        ),
+        joinString=" ",
+        # TODO: Fix this hack
+        adjacent=False,
+    ).setResultsName("StartTimeLineComment")
     + pp.LineEnd()
 )
+
+LineComment = pp.Group(
+    pp.NotAny(pp.Or(FileVersion ^ StartTime ^ Columns ^ StartTimeLineComment))
+    + pp.Literal(";")
+    + pp.Regex(r".*")
+    + pp.LineEnd()
+).setResultsName("LineComment", listAllMatches=True)
 
 
 Header = FileVersion + StartTime + Columns
@@ -152,7 +182,10 @@ LineData = pp.Group(
     + ColumnData.setResultsName("ColumnData")
     + pp.LineEnd()
 ).setResultsName("LineData", listAllMatches=True)
-TrcFileFormat = Header + pp.ZeroOrMore(pp.Or(LineComment ^ LineData))
+
+TrcFileFormat = Header + pp.ZeroOrMore(
+    pp.Or(LineComment ^ LineData ^ StartTimeLineComment)
+)
 
 # T: Type of message
 class TraceMessageType:
@@ -286,6 +319,10 @@ def _load_start_time(tokens):
     return tokens.get("StartTime")
 
 
+def _load_start_time_comment(tokens):
+    return tokens.get("StartTimeLineComment")
+
+
 def _load_columns(tokens):
     return tokens.get("Columns")
 
@@ -342,5 +379,7 @@ def load_string(string):
         raise ValueError("We only support 2.1", _load_version(tokens))
 
     messages = _load_rows(tokens)
+    start_time = _load_start_time_comment(tokens)
+    #  print(tokens.get("StartTimeLineComment"))
 
-    return InternalTrace(messages=messages, start_timestamp=0)
+    return InternalTrace(messages=messages, start_timestamp=start_time)
