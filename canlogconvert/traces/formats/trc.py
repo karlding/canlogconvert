@@ -9,7 +9,6 @@ from canlogconvert.traces.formats.internal_trace import InternalMessageDirection
 
 #  pp.ParserElement.setDefaultWhitespaceChars(" \t")
 
-ControlComment = pp.Combine(pp.Literal(";") + pp.Literal("$"))
 # According to PEAK's "PEAK CAN TRC File Format" PDF document, these are the
 # only valid version numbers supported
 ValidVersions = pp.Or(
@@ -21,15 +20,13 @@ ValidVersions = pp.Or(
     ^ pp.Literal("2.1")
 )
 FileVersion = (
-    ControlComment
-    + pp.Literal("FILEVERSION")
+    pp.Keyword(";$FILEVERSION")
     + pp.Literal("=")
     + pp.Combine(ValidVersions).setResultsName("FileVersion")
     + pp.LineEnd()
 )
 StartTime = (
-    ControlComment
-    + pp.Literal("STARTTIME")
+    pp.Keyword(";$STARTTIME")
     + pp.Literal("=")
     + pp.Combine(
         pp.ZeroOrMore(pp.Word(pp.nums))
@@ -39,8 +36,7 @@ StartTime = (
     + pp.LineEnd()
 )
 Columns = (
-    ControlComment
-    + pp.Literal("COLUMNS")
+    pp.Keyword(";$COLUMNS")
     + pp.Literal("=")
     + pp.Group(
         pp.Combine(
@@ -114,8 +110,6 @@ LineComment = pp.Group(
 
 
 Header = FileVersion + StartTime + Columns
-
-Comment = StartTime  # ^ FileVersion ^ Columns)
 
 # [N],O,T,[B],I,d,[R],l/L,D
 ColumnBusNumber = pp.Or(
