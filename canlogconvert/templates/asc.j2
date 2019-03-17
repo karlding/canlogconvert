@@ -1,0 +1,7 @@
+date Wed Jan 09 6:34:16 PM 2019
+base hex  timestamps absolute
+no internal events logged
+// version 7.0.0
+{%- for message in messages %}
+{{ "%11s" | format(message.timestamp) }} {{ "%-3s" | format(message.bus_number) }}{{ "%-4s" | format('{:02x}'.format(message.arbitration_id)) }}{{ "%14s" | format(message.direction_as_trc_string) -}}
+{%- endfor %}

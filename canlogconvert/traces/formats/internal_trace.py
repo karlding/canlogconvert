@@ -204,6 +204,17 @@ class InternalTrace(object):
             messages=self._messages,
         )
 
+    def as_asc_string(self):
+        """Convert to an ASC file
+
+        Returns:
+            str: a string representing an ASC file
+        """
+        env = Environment(loader=PackageLoader("canlogconvert", "templates"))
+        template = env.get_template("asc.j2")
+
+        return template.render(messages=self._messages)
+
     def as_log_string(self):
         """Convert to a log file
 
