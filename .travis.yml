@@ -1,14 +1,29 @@
 language: python
 
-matrix:
-  include:
-    - python: 2.7
-    - python: 3.5
-    - python: 3.6
-    - python: 3.7
-      dist: xenial
-      sudo: true
-  fast_finish: true
+dist: xenial
+
+python:
+  - 2.7
+  - 3.5
+  - 3.6
+  - 3.7
 
 script:
   - python setup.py test
+
+jobs:
+  include:
+    - stage: Documentation
+      name: "Sphinx Build"
+      python: "3.7"
+      before_install:
+        - travis_retry pip install -e .[docs]
+      script:
+        - make -C docs html
+    - stage: Lint
+      name: "Lint Checks"
+      python: "3.7"
+      before_install:
+        - travis_retry pip install -e .[dev]
+      script:
+        - black --check .
